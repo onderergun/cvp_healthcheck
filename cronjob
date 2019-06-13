@@ -1,1 +1,1 @@
-*/5 * * * * su -c 'python /home/cvp/healthcheck.py' cvp
+*/5 * * * * sudo -u cvp python /home/cvp/healthcheck.py

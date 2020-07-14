@@ -2,19 +2,46 @@ import commands
 import re
 import os
 
-with open('/cvpi/apps/cvp-frontend/web/api/healthcheck.html','w') as f:
-    f.write('Working...')
-    f.close
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import COMMASPACE, formatdate
 
-test = commands.getstatusoutput("""cvpi status all""")
-currentStatus = re.findall(r"[0-9]{1,3}\/[0-9]{1,3} components running",str(test))
-primaryCount = currentStatus[0].strip(' components running')
-primary = primaryCount.split('/')
-if primary[0] == primary[1]:
-    primaryStatus = "Ok"
-else:
-    primaryStatus = "Fail"
+def send_mail(send_from, send_to, subject, message,
+              server, port, username, password,
+              use_tls):
 
-with open('/cvpi/apps/cvp-frontend/web/api/healthcheck.html','w') as f:
-    f.write(primaryStatus)
-    f.close
+    msg = MIMEMultipart()
+    msg['From'] = send_from
+    msg['To'] = COMMASPACE.join(send_to)
+    msg['Date'] = formatdate(localtime=True)
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(message))
+
+    smtp = smtplib.SMTP(server, port)
+    if use_tls:
+        smtp.starttls()
+    smtp.login(username, password)
+    smtp.sendmail(send_from, send_to, msg.as_string())
+    smtp.quit()
+
+def main():
+
+    test = commands.getstatusoutput("""cvpi status all""")
+    
+    if "failed" in str(test):
+        print "At least one service failed in the cluster"
+        send_from = "sender@domain.com"
+        send_to = ["receiver@domain.com"]
+        subject = "CVP Health Problem"
+        message = "At least one service failed in the cluster"
+        server = "smtp.domain.com"
+        username = "username"
+        password = "password"
+        port =587
+        use_tls = True
+        send_mail(send_from, send_to, subject, message, server, port, username, password, use_tls )
+
+if __name__ == '__main__':
+    main()
